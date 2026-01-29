@@ -23,8 +23,6 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
 
     try {
       const { buildPublishRequest } = await import('../../../utils/lineRichMenuBuilder');
-      const publishData = buildPublishRequest(menus);
-
       const { supabase } = await import('../../../supabaseClient');
       const { data: { session } } = await supabase.auth.getSession();
 
@@ -32,16 +30,31 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         throw new Error('請先登入');
       }
 
-      const response = await supabase.functions.invoke('publish-richmenu', {
-        body: publishData,
-      });
+      // 改為逐一發送選單，避免 Payload 過大導致 413 或 Timeout
+      // 第一個選單同時負責觸發清理舊選單 (cleanOldMenus: true)
+      for (const [index, menu] of menus.entries()) {
+        console.log(`Starting upload for menu ${index + 1}/${menus.length}`);
 
-      if (response.error) {
-        throw new Error(response.error.message || '發布失敗');
-      }
+        // 分批建立請求，每次只包含一個選單
+        const publishData = buildPublishRequest([menu]);
 
-      if (!response.data?.success) {
-        throw new Error(response.data?.error || '發布失敗');
+        // 只有第一批次才執行舊選單清理
+        const payload = {
+          ...publishData,
+          cleanOldMenus: index === 0
+        };
+
+        const response = await supabase.functions.invoke('publish-richmenu', {
+          body: payload,
+        });
+
+        if (response.error) {
+          throw new Error(`選單 ${menu.name} 發布失敗: ${response.error.message}`);
+        }
+
+        if (!response.data?.success) {
+          throw new Error(`選單 ${menu.name} 發布失敗: ${response.data?.error}`);
+        }
       }
 
       // 發布成功
@@ -50,6 +63,7 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       }
       setStatus('success');
     } catch (error: any) {
+      console.error(error);
       alert(`發布失敗: ${error.message}`);
       setStatus('idle');
     }
