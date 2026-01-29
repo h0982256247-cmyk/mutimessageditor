@@ -27,6 +27,8 @@ export interface RichMenu {
   status?: ProjectStatus;
   scheduledAt?: string;
   folderId?: string | null;
+  lineRichMenuId?: string;
+  lineAliasId?: string;
 }
 
 export enum AppStep {

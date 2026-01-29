@@ -119,11 +119,11 @@ export function base64ToBlob(base64: string): Blob {
   const base64Data = base64.split(',')[1] || base64;
   const byteCharacters = atob(base64Data);
   const byteNumbers = new Array(byteCharacters.length);
-  
+
   for (let i = 0; i < byteCharacters.length; i++) {
     byteNumbers[i] = byteCharacters.charCodeAt(i);
   }
-  
+
   const byteArray = new Uint8Array(byteNumbers);
   return new Blob([byteArray], { type: 'image/png' });
 }
@@ -141,6 +141,15 @@ export function validateImageSize(width: number, height: number): boolean {
   ];
 
   return validSizes.some(size => size.width === width && size.height === height);
+}
+
+/**
+ * 驗證圖片檔案大小是否符合 LINE Rich Menu 規範 (最大 1MB)
+ */
+export function validateImageFileSize(base64: string): boolean {
+  // Base64 length * 0.75 is approximately the file size in bytes
+  const sizeInBytes = (base64.length * 3) / 4;
+  return sizeInBytes <= 1024 * 1024; // 1MB
 }
 
 /**

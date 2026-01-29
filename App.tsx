@@ -18,44 +18,41 @@ function App() {
   const [selectedHotspotId, setSelectedHotspotId] = useState<string | null>(null);
   const [showSaveSuccess, setShowSaveSuccess] = useState(false);
 
-  const [drafts, setDrafts] = useState<Project[]>([
-    {
-      id: '1',
-      name: '夏季促銷活動選單',
-      status: 'published',
-      folderId: 'f1',
-      updatedAt: new Date().toISOString(),
-      menus: [{
-        id: 'm1',
-        name: '主選單',
-        barText: '查看更多優惠',
-        isMain: true,
-        imageData: null,
-        hotspots: []
-      }]
-    },
-    {
-      id: '2',
-      name: '客戶服務導覽',
-      status: 'scheduled',
-      scheduledAt: '2024-05-20 10:00',
-      folderId: null,
-      updatedAt: new Date().toISOString(),
-      menus: [{
-        id: 'm2',
-        name: '主選單',
-        barText: '打開選單',
-        isMain: true,
-        imageData: null,
-        hotspots: []
-      }]
-    },
-  ]);
+  const [drafts, setDrafts] = useState<Project[]>([]);
+  const [folders, setFolders] = useState<Folder[]>([]);
 
-  const [folders, setFolders] = useState<Folder[]>([
-    { id: 'f1', name: '2024 活動專案' },
-    { id: 'f2', name: '品牌形象' },
-  ]);
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        loadUserData();
+      }
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session) {
+        loadUserData();
+      } else {
+        setDrafts([]);
+        setFolders([]);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const loadUserData = async () => {
+    try {
+      const { draftService } = await import('./services/draftService');
+      const [userDrafts, userFolders] = await Promise.all([
+        draftService.getDrafts(),
+        draftService.getFolders()
+      ]);
+      setDrafts(userDrafts);
+      setFolders(userFolders);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
+  };
 
   useEffect(() => {
     if (showSaveSuccess) {
@@ -152,24 +149,61 @@ function App() {
   }, [menus, selectedProjectId]);
 
   const handleUpdateDraftStatus = (id: string, status: ProjectStatus, scheduledAt?: string) => {
-    // Note: id here passed from PublishLineStep is likely menuId if we didn't update it,
-    // but we should check where it comes from.
-    // PublishLineStep passes mainMenu.id usually.
-    // However, we want to update the PROJECT status.
-
-    // Quick fix: Since we know the selectedProjectId, we can use that if id matches menu id
-    // OR filter drafts.
-
     setDrafts(prev => prev.map(d => {
-      // If the ID matches the project ID directly OR if the project contains the menu ID
       const isMatch = d.id === id || d.menus.some(m => m.id === id);
-
       if (isMatch) {
+        // If accessing via draft list, we might not have 'menus' loaded in state if we didn't select it.
+        // But here we are likely just updating status.
         return { ...d, status, scheduledAt };
       }
       return d;
     }));
     setStep(AppStep.DRAFT_LIST);
+  };
+
+  const handlePublishComplete = async (results: { aliasId: string; richMenuId: string }[]) => {
+    if (!selectedProjectId) return;
+
+    // 1. Update local menus with returned IDs
+    const updatedMenus = menus.map(menu => {
+      const result = results.find(r => r.aliasId === `menu_${menu.id}`);
+      if (result) {
+        return {
+          ...menu,
+          lineRichMenuId: result.richMenuId,
+          lineAliasId: result.aliasId
+        };
+      }
+      return menu;
+    });
+
+    setMenus(updatedMenus);
+
+    // 2. Update project drafts and save to DB
+    const projectIndex = drafts.findIndex(d => d.id === selectedProjectId);
+    if (projectIndex === -1) return;
+
+    const currentProject = drafts[projectIndex];
+    const updatedProject: Project = {
+      ...currentProject,
+      menus: updatedMenus,
+      status: 'published',
+      updatedAt: new Date().toISOString()
+    };
+
+    setDrafts(prev => {
+      const newDrafts = [...prev];
+      newDrafts[projectIndex] = updatedProject;
+      return newDrafts;
+    });
+
+    // 3. Persist to Cloud
+    try {
+      const { draftService } = await import('./services/draftService');
+      await draftService.saveDraft(updatedProject);
+    } catch (e) {
+      console.error('Failed to save published IDs:', e);
+    }
   };
 
   const handlePublishReset = () => {
@@ -297,6 +331,7 @@ function App() {
             menus={menus}
             onReset={handlePublishReset}
             onStatusChange={handleUpdateDraftStatus}
+            onPublishComplete={handlePublishComplete}
             onBack={handleGoBack}
           />
         )}

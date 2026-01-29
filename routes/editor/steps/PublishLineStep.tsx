@@ -22,12 +22,19 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     setStatus('publishing');
 
     try {
-      const { buildPublishRequest } = await import('../../../utils/lineRichMenuBuilder');
+      const { buildPublishRequest, validateImageFileSize } = await import('../../../utils/lineRichMenuBuilder');
       const { supabase } = await import('../../../supabaseClient');
       const { data: { session } } = await supabase.auth.getSession();
 
       if (!session) {
         throw new Error('請先登入');
+      }
+
+      // Check image sizes first
+      for (const menu of menus) {
+        if (menu.imageData && !validateImageFileSize(menu.imageData)) {
+          throw new Error(`選單「${menu.name}」的圖片檔案過大 (超過 1MB)，請壓縮後再試一次。`);
+        }
       }
 
       // 改為逐一發送選單，避免 Payload 過大導致 413 或 Timeout
