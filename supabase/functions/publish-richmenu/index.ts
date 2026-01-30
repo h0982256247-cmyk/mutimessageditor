@@ -181,12 +181,14 @@ Deno.serve(async (req) => {
                 }
             }
 
-            // 設定 Rich Menu Alias
+            // 設定 Rich Menu Alias (智慧判斷：更新或建立)
             console.log(`Setting alias ${menu.aliasId}...`);
-            const aliasResponse = await fetch(
+
+            // Step 1: 先嘗試「更新」現有的 Alias (PUT)
+            const updateAliasResponse = await fetch(
                 `https://api.line.me/v2/bot/richmenu/alias/${menu.aliasId}`,
                 {
-                    method: 'POST',
+                    method: 'PUT',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
                         'Content-Type': 'application/json',
@@ -195,10 +197,36 @@ Deno.serve(async (req) => {
                 }
             );
 
-            // Alias 可能已存在,不算錯誤
-            if (!aliasResponse.ok) {
-                const aliasErr = await aliasResponse.text();
-                console.warn(`Set alias result: ${aliasResponse.status} - ${aliasErr}`);
+            if (updateAliasResponse.ok) {
+                console.log(`Alias ${menu.aliasId} updated successfully.`);
+            } else if (updateAliasResponse.status === 404) {
+                // Step 2: Alias 不存在，改用「建立」(POST)
+                console.log(`Alias ${menu.aliasId} not found, creating new...`);
+                const createAliasResponse = await fetch(
+                    'https://api.line.me/v2/bot/richmenu/alias',
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${accessToken}`,
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({
+                            richMenuAliasId: menu.aliasId,
+                            richMenuId
+                        }),
+                    }
+                );
+
+                if (!createAliasResponse.ok) {
+                    const createErr = await createAliasResponse.text();
+                    console.warn(`Create alias failed: ${createAliasResponse.status} - ${createErr}`);
+                } else {
+                    console.log(`Alias ${menu.aliasId} created successfully.`);
+                }
+            } else {
+                // 其他錯誤，記錄但不中斷
+                const updateErr = await updateAliasResponse.text();
+                console.warn(`Update alias warning: ${updateAliasResponse.status} - ${updateErr}`);
             }
 
             results.push({
