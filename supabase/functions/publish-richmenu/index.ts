@@ -13,11 +13,22 @@ interface PublishRequest {
         imageBase64: string | null;
         aliasId: string;
         isMain: boolean;
+        menuName?: string;
     }>;
+    draftId?: string;
+    cleanOldMenus?: boolean;
 }
 
 interface LineRichMenuResponse {
     richMenuId: string;
+}
+
+interface ProgressItem {
+    aliasId: string;
+    step: string;
+    status: 'pending' | 'success' | 'failed';
+    richMenuId?: string;
+    error?: string;
 }
 
 Deno.serve(async (req) => {
@@ -26,9 +37,12 @@ Deno.serve(async (req) => {
         return new Response('ok', { headers: corsHeaders });
     }
 
+    let jobId: string | null = null;
+    let supabaseClient: any = null;
+
     try {
         // 建立 Supabase client
-        const supabaseClient = createClient(
+        supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             {
@@ -66,7 +80,6 @@ Deno.serve(async (req) => {
             throw new Error('找不到 LINE Channel 設定，請先在首頁綁定 Channel');
         }
 
-        // 注意: 這裡假設 access_token_encrypted 已經在 DB 端解密
         const accessToken = channelData.access_token_encrypted;
 
         if (!accessToken) {
@@ -81,7 +94,7 @@ Deno.serve(async (req) => {
             throw new Error('無法解析請求內容 (Invalid JSON)');
         }
 
-        const { menus }: PublishRequest = requestBody;
+        const { menus, draftId, cleanOldMenus = false }: PublishRequest = requestBody;
 
         if (!menus || menus.length === 0) {
             throw new Error('沒有選單資料可發布');
@@ -89,159 +102,209 @@ Deno.serve(async (req) => {
 
         console.log(`Processing ${menus.length} menus`);
 
-        const results = [];
-        let mainMenuId = '';
+        // ========== Step 1: 建立發布任務 (Job) ==========
+        const initialProgress: ProgressItem[] = menus.map(m => ({
+            aliasId: m.aliasId,
+            step: 'pending',
+            status: 'pending'
+        }));
 
-        // 1. 先刪除現有的所有 Rich Menu (可選)
-        // 這樣可以避免累積過多舊選單
-        try {
-            console.log('Fetching old rich menus...');
-            const listResponse = await fetch('https://api.line.me/v2/bot/richmenu/list', {
-                method: 'GET',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                },
-            });
+        const { data: jobData, error: jobError } = await supabaseClient
+            .from('rm_publish_jobs')
+            .insert({
+                user_id: user.id,
+                draft_id: draftId || null,
+                status: 'publishing',
+                current_step: 'create_menu',
+                progress: initialProgress
+            })
+            .select()
+            .single();
 
-            if (listResponse.ok) {
-                const { richmenus } = await listResponse.json();
-                console.log(`Found ${richmenus?.length || 0} old menus. Deleting...`);
-                for (const menu of richmenus || []) {
-                    await fetch(`https://api.line.me/v2/bot/richmenu/${menu.richMenuId}`, {
-                        method: 'DELETE',
-                        headers: {
-                            'Authorization': `Bearer ${accessToken}`,
-                        },
-                    });
-                }
-            } else {
-                const errText = await listResponse.text();
-                console.warn('Failed to list old menus:', errText);
-            }
-        } catch (err) {
-            console.warn('清理舊選單失敗:', err);
+        if (jobError) {
+            console.warn('Failed to create job record:', jobError);
+        } else {
+            jobId = jobData.id;
+            console.log(`Created job: ${jobId}`);
         }
 
-        // 2. 建立所有選單
+        const results = [];
+        let mainMenuId = '';
+        const progress: ProgressItem[] = [...initialProgress];
+
+        // Helper: 更新 Job 進度
+        const updateJobProgress = async (currentStep: string) => {
+            if (!jobId) return;
+            await supabaseClient
+                .from('rm_publish_jobs')
+                .update({
+                    current_step: currentStep,
+                    progress,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+        };
+
+        // ========== Step 2: 建立所有選單 (不再刪除舊選單) ==========
         for (const [index, menu] of menus.entries()) {
             console.log(`Creating menu ${index + 1}/${menus.length}: ${menu.aliasId}`);
+            progress[index].step = 'create_menu';
 
-            // 建立 Rich Menu
-            const createResponse = await fetch('https://api.line.me/v2/bot/richmenu', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(menu.menuData),
-            });
-
-            if (!createResponse.ok) {
-                const errorText = await createResponse.text();
-                console.error(`LINE API Create Error: ${errorText}`);
-                throw new Error(`建立選單失敗 (LINE API): ${errorText}`);
-            }
-
-            const { richMenuId }: LineRichMenuResponse = await createResponse.json();
-            console.log(`Created rich menu ID: ${richMenuId}`);
-
-            // 上傳圖片
-            if (menu.imageBase64) {
-                console.log(`Uploading image for ${richMenuId}...`);
-                // 處理 Base64 圖片
-                // 支援 data:image/png;base64,... 格式或純 base64
-                const base64Data = menu.imageBase64.includes(',')
-                    ? menu.imageBase64.split(',')[1]
-                    : menu.imageBase64;
-
-                // Decode base64 string
-                const binaryString = atob(base64Data);
-                const len = binaryString.length;
-                const bytes = new Uint8Array(len);
-                for (let i = 0; i < len; i++) {
-                    bytes[i] = binaryString.charCodeAt(i);
-                }
-
-                const uploadResponse = await fetch(
-                    `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
-                    {
-                        method: 'POST',
-                        headers: {
-                            'Authorization': `Bearer ${accessToken}`,
-                            'Content-Type': 'image/png',
-                        },
-                        body: bytes,
-                    }
-                );
-
-                if (!uploadResponse.ok) {
-                    const errorText = await uploadResponse.text();
-                    console.error(`LINE API Image Upload Error: ${errorText}`);
-                    throw new Error(`上傳圖片失敗 (LINE API): ${errorText}`);
-                }
-            }
-
-            // 設定 Rich Menu Alias (智慧判斷：更新或建立)
-            console.log(`Setting alias ${menu.aliasId}...`);
-
-            // Step 1: 先嘗試「更新」現有的 Alias (PUT)
-            const updateAliasResponse = await fetch(
-                `https://api.line.me/v2/bot/richmenu/alias/${menu.aliasId}`,
-                {
-                    method: 'PUT',
+            try {
+                // 建立 Rich Menu
+                const createResponse = await fetch('https://api.line.me/v2/bot/richmenu', {
+                    method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`,
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ richMenuId }),
-                }
-            );
+                    body: JSON.stringify(menu.menuData),
+                });
 
-            if (updateAliasResponse.ok) {
-                console.log(`Alias ${menu.aliasId} updated successfully.`);
-            } else if (updateAliasResponse.status === 404) {
-                // Step 2: Alias 不存在，改用「建立」(POST)
-                console.log(`Alias ${menu.aliasId} not found, creating new...`);
-                const createAliasResponse = await fetch(
-                    'https://api.line.me/v2/bot/richmenu/alias',
+                if (!createResponse.ok) {
+                    const errorText = await createResponse.text();
+                    console.error(`LINE API Create Error: ${errorText}`);
+                    progress[index].status = 'failed';
+                    progress[index].error = errorText;
+                    await updateJobProgress('create_menu');
+                    throw new Error(`建立選單失敗 (LINE API): ${errorText}`);
+                }
+
+                const { richMenuId }: LineRichMenuResponse = await createResponse.json();
+                console.log(`Created rich menu ID: ${richMenuId}`);
+                progress[index].richMenuId = richMenuId;
+
+                // ========== Step 3: 上傳圖片 ==========
+                if (menu.imageBase64) {
+                    progress[index].step = 'upload_image';
+                    await updateJobProgress('upload_image');
+
+                    console.log(`Uploading image for ${richMenuId}...`);
+                    const base64Data = menu.imageBase64.includes(',')
+                        ? menu.imageBase64.split(',')[1]
+                        : menu.imageBase64;
+
+                    const binaryString = atob(base64Data);
+                    const len = binaryString.length;
+                    const bytes = new Uint8Array(len);
+                    for (let i = 0; i < len; i++) {
+                        bytes[i] = binaryString.charCodeAt(i);
+                    }
+
+                    const uploadResponse = await fetch(
+                        `https://api-data.line.me/v2/bot/richmenu/${richMenuId}/content`,
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'image/png',
+                            },
+                            body: bytes,
+                        }
+                    );
+
+                    if (!uploadResponse.ok) {
+                        const errorText = await uploadResponse.text();
+                        console.error(`LINE API Image Upload Error: ${errorText}`);
+                        progress[index].status = 'failed';
+                        progress[index].error = errorText;
+                        await updateJobProgress('upload_image');
+                        throw new Error(`上傳圖片失敗 (LINE API): ${errorText}`);
+                    }
+                }
+
+                // ========== Step 4: 設定 Alias (智慧判斷) ==========
+                progress[index].step = 'set_alias';
+                await updateJobProgress('set_alias');
+
+                console.log(`Setting alias ${menu.aliasId}...`);
+
+                // 先將舊版本標記為 inactive
+                await supabaseClient
+                    .from('rm_rich_menu_versions')
+                    .update({ is_active: false })
+                    .eq('user_id', user.id)
+                    .eq('alias_id', menu.aliasId);
+
+                // 先嘗試更新現有 Alias
+                const updateAliasResponse = await fetch(
+                    `https://api.line.me/v2/bot/richmenu/alias/${menu.aliasId}`,
                     {
-                        method: 'POST',
+                        method: 'PUT',
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json',
                         },
-                        body: JSON.stringify({
-                            richMenuAliasId: menu.aliasId,
-                            richMenuId
-                        }),
+                        body: JSON.stringify({ richMenuId }),
                     }
                 );
 
-                if (!createAliasResponse.ok) {
-                    const createErr = await createAliasResponse.text();
-                    console.warn(`Create alias failed: ${createAliasResponse.status} - ${createErr}`);
+                if (updateAliasResponse.ok) {
+                    console.log(`Alias ${menu.aliasId} updated successfully.`);
+                } else if (updateAliasResponse.status === 404) {
+                    console.log(`Alias ${menu.aliasId} not found, creating new...`);
+                    const createAliasResponse = await fetch(
+                        'https://api.line.me/v2/bot/richmenu/alias',
+                        {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${accessToken}`,
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                richMenuAliasId: menu.aliasId,
+                                richMenuId
+                            }),
+                        }
+                    );
+
+                    if (!createAliasResponse.ok) {
+                        const createErr = await createAliasResponse.text();
+                        console.warn(`Create alias failed: ${createAliasResponse.status} - ${createErr}`);
+                    } else {
+                        console.log(`Alias ${menu.aliasId} created successfully.`);
+                    }
                 } else {
-                    console.log(`Alias ${menu.aliasId} created successfully.`);
+                    const updateErr = await updateAliasResponse.text();
+                    console.warn(`Update alias warning: ${updateAliasResponse.status} - ${updateErr}`);
                 }
-            } else {
-                // 其他錯誤，記錄但不中斷
-                const updateErr = await updateAliasResponse.text();
-                console.warn(`Update alias warning: ${updateAliasResponse.status} - ${updateErr}`);
-            }
 
-            results.push({
-                aliasId: menu.aliasId,
-                richMenuId,
-                isMain: menu.isMain,
-            });
+                // ========== Step 6: 儲存版本歷史 ==========
+                await supabaseClient
+                    .from('rm_rich_menu_versions')
+                    .insert({
+                        user_id: user.id,
+                        draft_id: draftId || null,
+                        job_id: jobId,
+                        alias_id: menu.aliasId,
+                        rich_menu_id: richMenuId,
+                        menu_name: menu.menuName || menu.menuData?.name || 'Unknown',
+                        is_main: menu.isMain,
+                        is_active: true
+                    });
 
-            if (menu.isMain) {
-                mainMenuId = richMenuId;
+                progress[index].status = 'success';
+                results.push({
+                    aliasId: menu.aliasId,
+                    richMenuId,
+                    isMain: menu.isMain,
+                });
+
+                if (menu.isMain) {
+                    mainMenuId = richMenuId;
+                }
+
+            } catch (menuError: any) {
+                progress[index].status = 'failed';
+                progress[index].error = menuError.message;
+                await updateJobProgress(progress[index].step);
+                throw menuError;
             }
         }
 
-        // 3. 設定主選單為預設選單
+        // ========== Step 5: 設定預設選單 ==========
         if (mainMenuId) {
+            await updateJobProgress('set_default');
             console.log(`Setting default menu: ${mainMenuId}`);
             const setDefaultResponse = await fetch(
                 `https://api.line.me/v2/bot/user/all/richmenu/${mainMenuId}`,
@@ -259,9 +322,23 @@ Deno.serve(async (req) => {
             }
         }
 
+        // ========== 完成：更新 Job 狀態 ==========
+        if (jobId) {
+            await supabaseClient
+                .from('rm_publish_jobs')
+                .update({
+                    status: 'completed',
+                    current_step: 'done',
+                    progress,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+        }
+
         return new Response(
             JSON.stringify({
                 success: true,
+                jobId,
                 results,
                 mainMenuId,
             }),
@@ -272,9 +349,23 @@ Deno.serve(async (req) => {
         );
     } catch (error: any) {
         console.error('Function execution error:', error);
+
+        // 更新 Job 為失敗狀態
+        if (jobId && supabaseClient) {
+            await supabaseClient
+                .from('rm_publish_jobs')
+                .update({
+                    status: 'failed',
+                    error_message: error.message,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', jobId);
+        }
+
         return new Response(
             JSON.stringify({
                 success: false,
+                jobId,
                 error: error.message || 'Unknown error occurred',
                 stack: error.stack,
             }),
