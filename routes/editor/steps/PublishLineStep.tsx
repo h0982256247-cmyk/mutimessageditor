@@ -53,6 +53,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
 
         const response = await supabase.functions.invoke('publish-richmenu', {
           body: payload,
+          headers: {
+            Authorization: `Bearer ${session.access_token}`
+          }
         });
 
         if (response.error) {
@@ -99,6 +102,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
 
       const response = await supabase.functions.invoke('publish-richmenu', {
         body: publishData,
+        headers: {
+          Authorization: `Bearer ${session.access_token}`
+        }
       });
 
       if (response.error) {
