@@ -185,16 +185,9 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
               <button
                 type="button"
                 onClick={() => setMode('sign_in')}
-                className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${mode === 'sign_in' ? 'bg-white shadow-sm text-primary' : 'text-secondary hover:text-primary'}`}
+                className="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all bg-white shadow-sm text-primary"
               >
                 登入
-              </button>
-              <button
-                type="button"
-                onClick={() => setMode('sign_up')}
-                className={`flex-1 py-2.5 text-sm font-bold rounded-xl transition-all ${mode === 'sign_up' ? 'bg-white shadow-sm text-primary' : 'text-secondary hover:text-primary'}`}
-              >
-                註冊
               </button>
             </div>
 
@@ -233,7 +226,6 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-bold text-text">Channel：{channelName}</p>
-                  <p className="text-xs text-secondary mt-1">Token 已加密保存，前端無法讀取明文</p>
                 </div>
                 <button
                   onClick={handleSignOut}
@@ -302,7 +294,6 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
         )}
 
         <div className="mt-8 pt-6 border-t border-border flex flex-col items-center gap-2">
-          <p className="text-[10px] text-gray-400">Supabase Email Auth · Token encrypted in DB</p>
         </div>
       </Card>
     </div>
