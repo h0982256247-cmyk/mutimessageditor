@@ -67,6 +67,13 @@ function convertHotspotToArea(hotspot: Hotspot, allMenus: RichMenu[]): LineRichM
     case 'switch':
       // 找到目標選單
       const targetMenu = allMenus.find(m => m.id === hotspot.action.data);
+      console.log('[Switch Debug]', {
+        hotspotActionData: hotspot.action.data,
+        targetMenuFound: !!targetMenu,
+        targetMenuId: targetMenu?.id,
+        targetMenuName: targetMenu?.name,
+        generatedAliasId: targetMenu?.id.replace(/-/g, '')
+      });
       if (targetMenu) {
         area.action.type = 'richmenuswitch';
         area.action.label = hotspot.action.label || targetMenu.name;
