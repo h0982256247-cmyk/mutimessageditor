@@ -82,11 +82,53 @@ export const draftService = {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) throw new Error('請先登入以儲存草稿');
 
-        // Check if draft exists (conceptually)
-        // In our App.tsx, we generate random UUIDs for new drafts frontend-side.
-        // If we want to upsert, we can try to use the same ID.
-        // However, Supabase ID is UUID default gen_random_uuid().
-        // Strategy: We will use UPSERT on the ID column.
+        // Helper: Upload Base64 image to Storage
+        const uploadImage = async (base64: string, menuId: string): Promise<string> => {
+            try {
+                // Check if it's already a URL
+                if (base64.startsWith('http')) return base64;
+
+                // Decode Base64
+                const base64Data = base64.split(',')[1];
+                const binaryStr = atob(base64Data);
+                const len = binaryStr.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+                const blob = new Blob([bytes], { type: 'image/png' });
+
+                // Upload
+                const path = `${user.id}/${project.id}/${menuId}.png`;
+                const { error: uploadError } = await supabase.storage
+                    .from('richmenu-images')
+                    .upload(path, blob, {
+                        contentType: 'image/png',
+                        upsert: true
+                    });
+
+                if (uploadError) throw uploadError;
+
+                // Get Public URL
+                const { data: { publicUrl } } = supabase.storage
+                    .from('richmenu-images')
+                    .getPublicUrl(path);
+
+                return publicUrl;
+            } catch (e) {
+                console.error('Image upload failed, fallback to base64 (might fail DB save):', e);
+                return base64;
+            }
+        };
+
+        // Process all menus to upload images
+        const processedMenus = await Promise.all(project.menus.map(async (menu) => {
+            if (menu.imageData && menu.imageData.startsWith('data:image')) {
+                const publicUrl = await uploadImage(menu.imageData, menu.id);
+                return { ...menu, imageData: publicUrl };
+            }
+            return menu;
+        }));
 
         // Transform Project to DB schema
         const payload = {
@@ -96,7 +138,7 @@ export const draftService = {
             status: project.status,
             scheduled_at: project.scheduledAt || null,
             folder_id: project.folderId || null,
-            data: { menus: project.menus },
+            data: { menus: processedMenus }, // Use processed menus with URLs
             updated_at: new Date().toISOString()
         };
 

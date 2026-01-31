@@ -195,15 +195,28 @@ Deno.serve(async (req) => {
                     await updateJobProgress('upload_image');
 
                     console.log(`Uploading image for ${richMenuId}...`);
-                    const base64Data = menu.imageBase64.includes(',')
-                        ? menu.imageBase64.split(',')[1]
-                        : menu.imageBase64;
 
-                    const binaryString = atob(base64Data);
-                    const len = binaryString.length;
-                    const bytes = new Uint8Array(len);
-                    for (let i = 0; i < len; i++) {
-                        bytes[i] = binaryString.charCodeAt(i);
+                    let imageBytes: Uint8Array;
+
+                    if (menu.imageBase64.startsWith('http')) {
+                        // Handle URL (from Supabase Storage)
+                        console.log('Downloading image from URL...');
+                        const imgRes = await fetch(menu.imageBase64);
+                        if (!imgRes.ok) throw new Error(`Failed to download image from URL: ${menu.imageBase64}`);
+                        const buffer = await imgRes.arrayBuffer();
+                        imageBytes = new Uint8Array(buffer);
+                    } else {
+                        // Handle Base64
+                        const base64Data = menu.imageBase64.includes(',')
+                            ? menu.imageBase64.split(',')[1]
+                            : menu.imageBase64;
+
+                        const binaryString = atob(base64Data);
+                        const len = binaryString.length;
+                        imageBytes = new Uint8Array(len);
+                        for (let i = 0; i < len; i++) {
+                            imageBytes[i] = binaryString.charCodeAt(i);
+                        }
                     }
 
                     const uploadResponse = await fetch(
@@ -214,7 +227,7 @@ Deno.serve(async (req) => {
                                 'Authorization': `Bearer ${accessToken}`,
                                 'Content-Type': 'image/png',
                             },
-                            body: bytes,
+                            body: imageBytes,
                         }
                     );
 
