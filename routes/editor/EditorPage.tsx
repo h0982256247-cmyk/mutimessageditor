@@ -30,48 +30,45 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
   const currentHotspot = currentMenu.hotspots.find(h => h.id === selectedHotspotId);
 
-  // --- Handlers ---
+  // --- Handlers (wrapped with useCallback for performance) ---
 
-  const handleAddSubMenu = () => {
-    // 子選單上限：9（依需求）
+  const handleAddSubMenu = React.useCallback(() => {
     const subMenuCount = menus.filter(m => !m.isMain).length;
     if (subMenuCount >= 9) {
       alert('子選單最多 9 頁，已達上限');
       return;
     }
 
-    // Add missing required property 'barText' to RichMenu
     const newMenu: RichMenu = {
       id: crypto.randomUUID(),
       name: `新子選單 ${subMenuCount + 1}`,
       barText: '選單',
       isMain: false,
-      // 子選單不預設複製主頁圖片（避免使用者忘了換圖）
       imageData: null,
       hotspots: []
     };
-    
+
     setMenus(prev => [...prev, newMenu]);
     setSelectedMenuId(newMenu.id);
-  };
+  }, [menus, setMenus, setSelectedMenuId]);
 
-  const handleDeleteSubMenu = (id: string) => {
+  const handleDeleteSubMenu = React.useCallback((id: string) => {
     setMenus(prev => prev.filter(m => m.id !== id));
     if (selectedMenuId === id) {
       setSelectedMenuId(menus.find(m => m.isMain)?.id || '');
     }
-  };
+  }, [menus, selectedMenuId, setMenus, setSelectedMenuId]);
 
-  const handleUpdateMenu = (updates: Partial<RichMenu>) => {
+  const handleUpdateMenu = React.useCallback((updates: Partial<RichMenu>) => {
     setMenus(prev => prev.map(m => {
-        if (m.id === selectedMenuId) {
-            return { ...m, ...updates };
-        }
-        return m;
+      if (m.id === selectedMenuId) {
+        return { ...m, ...updates };
+      }
+      return m;
     }));
-  };
+  }, [selectedMenuId, setMenus]);
 
-  const handleUpdateHotspot = (hotspot: Hotspot) => {
+  const handleUpdateHotspot = React.useCallback((hotspot: Hotspot) => {
     setMenus(prev => prev.map(m => {
       if (m.id === selectedMenuId) {
         return {
@@ -81,18 +78,18 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       }
       return m;
     }));
-  };
+  }, [selectedMenuId, setMenus]);
 
-  const handleAddHotspot = (hotspot: Hotspot) => {
-     setMenus(prev => prev.map(m => {
+  const handleAddHotspot = React.useCallback((hotspot: Hotspot) => {
+    setMenus(prev => prev.map(m => {
       if (m.id === selectedMenuId) {
         return { ...m, hotspots: [...m.hotspots, hotspot] };
       }
       return m;
     }));
-  };
+  }, [selectedMenuId, setMenus]);
 
-  const createNewHotspot = () => {
+  const createNewHotspot = React.useCallback(() => {
     const width = DEFAULT_HOTSPOT_SIZE.width;
     const height = DEFAULT_HOTSPOT_SIZE.height;
     const x = Math.round((CANVAS_WIDTH - width) / 2);
@@ -109,9 +106,9 @@ export const EditorPage: React.FC<EditorPageProps> = ({
 
     handleAddHotspot(newHotspot);
     setSelectedHotspotId(newHotspot.id);
-  };
+  }, [handleAddHotspot, setSelectedHotspotId]);
 
-  const handleDeleteHotspot = (id: string) => {
+  const handleDeleteHotspot = React.useCallback((id: string) => {
     setMenus(prev => prev.map(m => {
       if (m.id === selectedMenuId) {
         return { ...m, hotspots: m.hotspots.filter(h => h.id !== id) };
@@ -119,12 +116,12 @@ export const EditorPage: React.FC<EditorPageProps> = ({
       return m;
     }));
     setSelectedHotspotId(null);
-  };
+  }, [selectedMenuId, setMenus, setSelectedHotspotId]);
 
-  const handleUpdateInspector = (updates: Partial<Hotspot>) => {
+  const handleUpdateInspector = React.useCallback((updates: Partial<Hotspot>) => {
     if (!currentHotspot) return;
     handleUpdateHotspot({ ...currentHotspot, ...updates });
-  };
+  }, [currentHotspot, handleUpdateHotspot]);
 
   return (
     <div className="flex h-full border-t border-border">
