@@ -135,8 +135,9 @@ export const LineInspector: React.FC<LineInspectorProps> = ({
   const handleActionTypeChange = (type: ActionType) => {
     let defaultData = '';
     if (type === 'switch' && allMenus.length > 0) {
-      const sub = allMenus.find(m => !m.isMain);
-      if (sub) defaultData = sub.id;
+      // 預設選擇第一個「不是目前編輯中」的選單，避免指向自己
+      const target = allMenus.find(m => m.id !== selectedMenu?.id);
+      if (target) defaultData = target.id;
     }
     onUpdate({ action: { ...hotspot.action, type, data: defaultData } });
   };
