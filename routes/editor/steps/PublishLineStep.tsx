@@ -78,9 +78,8 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       }
 
       // 發布成功
-      if (mainMenu) {
-        onStatusChange(mainMenu.id, 'published');
-      }
+      // onStatusChange 移至 onPublishComplete 統一處理
+
 
       // 更新前端狀態與資料庫
       if (onPublishComplete) {

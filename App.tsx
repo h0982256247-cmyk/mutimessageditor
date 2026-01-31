@@ -195,31 +195,50 @@ function App() {
 
     setMenus(updatedMenus);
 
-    // 2. Update project drafts and save to DB
+    // 2. Identify projects to update
     const projectIndex = drafts.findIndex(d => d.id === selectedProjectId);
     if (projectIndex === -1) return;
 
     const currentProject = drafts[projectIndex];
+    // Find any existing active project that is NOT the current one
+    const previousActiveProject = drafts.find(d => d.status === 'active' && d.id !== selectedProjectId);
+
     const updatedProject: Project = {
       ...currentProject,
       menus: updatedMenus,
-      status: 'published',
+      status: 'active', // Fix: Set to active immediately upon publish
       updatedAt: new Date().toISOString()
     };
 
-    setDrafts(prev => {
-      const newDrafts = [...prev];
-      newDrafts[projectIndex] = updatedProject;
-      return newDrafts;
-    });
+    // 3. Update drafts state locally
+    setDrafts(prev => prev.map(d => {
+      if (d.id === selectedProjectId) {
+        return updatedProject;
+      }
+      // Demote previous active project
+      if (d.id === previousActiveProject?.id) {
+        return { ...d, status: 'published' };
+      }
+      return d;
+    }));
 
-    // 3. Persist to Cloud
+    // 4. Persist to Cloud (Both current and previous active)
     try {
       const { draftService } = await import('./services/draftService');
+
+      // Save current project
       await draftService.saveDraft(updatedProject);
+
+      // Save previous active project if exists
+      if (previousActiveProject) {
+        await draftService.saveDraft({ ...previousActiveProject, status: 'published' });
+      }
     } catch (e) {
-      console.error('Failed to save published IDs:', e);
+      console.error('Failed to save published IDs or update statuses:', e);
     }
+
+    // 5. Navigate back to draft list
+    setStep(AppStep.DRAFT_LIST);
   };
 
   const handlePublishReset = () => {
