@@ -34,15 +34,19 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
 
       // 改為逐一發送選單，避免 Payload 過大導致 413 或 Timeout
       // 第一個選單同時負責觸發清理舊選單 (cleanOldMenus: true)
-      for (const [index, menu] of menus.entries()) {
-        console.log(`Starting upload for menu ${index + 1}/${menus.length}`);
+      // 1. 先建立完整的 Publish Request 資料，確保所有選單之間的連結關係 (Switch Action) 正確解析
+      // 如果直接分批傳 [menu] 進去，buildPublishRequest 會找不到目標選單而導致連結失效
+      const fullPublishRequest = buildPublishRequest(menus);
 
-        // 分批建立請求，每次只包含一個選單
-        const publishData = buildPublishRequest([menu]);
+      // 2. 改為逐一發送選單，避免 Payload 過大導致 413 或 Timeout
+      // 第一個選單同時負責觸發清理舊選單 (cleanOldMenus: true)
+      for (const [index, menuItem] of fullPublishRequest.menus.entries()) {
+        const originalMenu = menus[index]; // 為了顯示名稱
+        console.log(`Starting upload for menu ${index + 1}/${menus.length}: ${originalMenu.name}`);
 
-        // 只有第一批次才執行舊選單清理
+        // 分批建立請求，每次只包含一個選單 payload
         const payload = {
-          ...publishData,
+          menus: [menuItem],
           cleanOldMenus: index === 0
         };
 
@@ -52,11 +56,11 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         });
 
         if (response.error) {
-          throw new Error(`選單 ${menu.name} 發布失敗: ${response.error.message}`);
+          throw new Error(`選單 ${originalMenu.name} 發布失敗: ${response.error.message}`);
         }
 
         if (!response.data?.success) {
-          throw new Error(`選單 ${menu.name} 發布失敗: ${response.data?.error}`);
+          throw new Error(`選單 ${originalMenu.name} 發布失敗: ${response.data?.error}`);
         }
       }
 
