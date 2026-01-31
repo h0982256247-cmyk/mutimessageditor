@@ -24,11 +24,6 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     try {
       const { buildPublishRequest, validateImageFileSize } = await import('../../../utils/lineRichMenuBuilder');
       const { supabase } = await import('../../../supabaseClient');
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (!session) {
-        throw new Error('請先登入');
-      }
 
       // Check image sizes first
       for (const menu of menus) {
@@ -51,11 +46,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
           cleanOldMenus: index === 0
         };
 
+        // supabase.functions.invoke automatically includes auth token
         const response = await supabase.functions.invoke('publish-richmenu', {
-          body: payload,
-          headers: {
-            Authorization: `Bearer ${session.access_token}`
-          }
+          body: payload
         });
 
         if (response.error) {
@@ -94,17 +87,10 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       const publishData = buildPublishRequest(menus);
 
       const { supabase } = await import('../../../supabaseClient');
-      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session) {
-        throw new Error('請先登入');
-      }
-
+      // supabase.functions.invoke automatically includes auth token
       const response = await supabase.functions.invoke('publish-richmenu', {
-        body: publishData,
-        headers: {
-          Authorization: `Bearer ${session.access_token}`
-        }
+        body: publishData
       });
 
       if (response.error) {

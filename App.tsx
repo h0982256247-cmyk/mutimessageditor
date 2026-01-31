@@ -128,25 +128,37 @@ function App() {
     setStep(AppStep.EDITOR);
   };
 
-  const handleSaveDraft = useCallback(() => {
+  const handleSaveDraft = useCallback(async () => {
     if (!selectedProjectId) return;
+
+    const mainMenu = menus.find(m => m.isMain);
+    const currentDraft = drafts.find(d => d.id === selectedProjectId);
+    const updatedProject: Project = {
+      id: selectedProjectId,
+      name: mainMenu?.name || currentDraft?.name || '未命名專案',
+      status: currentDraft?.status || 'draft',
+      folderId: currentDraft?.folderId || null,
+      menus: [...menus],
+      updatedAt: new Date().toISOString()
+    };
 
     setDrafts(prev => prev.map(p => {
       if (p.id === selectedProjectId) {
-        // Update project with current menus state
-        // Also update project name from main menu name if desirable, or keep separate
-        const mainMenu = menus.find(m => m.isMain);
-        return {
-          ...p,
-          menus: [...menus],
-          name: mainMenu ? mainMenu.name : p.name, // Sync project name with main menu name
-          updatedAt: new Date().toISOString()
-        };
+        return { ...p, ...updatedProject };
       }
       return p;
     }));
+
+    // Sync to database
+    try {
+      const { draftService } = await import('./services/draftService');
+      await draftService.saveDraft(updatedProject);
+    } catch (e) {
+      console.error('Failed to save draft to database:', e);
+    }
+
     setShowSaveSuccess(true);
-  }, [menus, selectedProjectId]);
+  }, [menus, selectedProjectId, drafts]);
 
   const handleUpdateDraftStatus = (id: string, status: ProjectStatus, scheduledAt?: string) => {
     setDrafts(prev => prev.map(d => {
