@@ -61,24 +61,40 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
     }
 
     let mounted = true;
-    (async () => {
-      const { data, error } = await supabase
-        .from('rm_line_channels')
-        .select('id,name')
-        .limit(1);
+    const abortController = new AbortController();
 
-      if (!mounted) return;
-      if (error) {
-        console.warn('[rm_line_channels] select error', error);
-        setHasChannel(false);
-        return;
+    (async () => {
+      try {
+        const { data, error } = await supabase
+          .from('rm_line_channels')
+          .select('id,name')
+          .limit(1)
+          .abortSignal(abortController.signal);
+
+        if (!mounted) return;
+        if (error) {
+          // Ignore abort errors
+          if (error.message?.includes('abort') || error.code === 'PGRST116') {
+            return;
+          }
+          console.warn('[rm_line_channels] select error', error);
+          setHasChannel(false);
+          return;
+        }
+        setHasChannel(!!(data && data.length > 0));
+        if (data?.[0]?.name) setChannelName(data[0].name);
+      } catch (err: any) {
+        // Ignore abort errors
+        if (err?.name === 'AbortError' || err?.message?.includes('abort')) {
+          return;
+        }
+        console.error('Error checking channel:', err);
       }
-      setHasChannel(!!(data && data.length > 0));
-      if (data?.[0]?.name) setChannelName(data[0].name);
     })();
 
     return () => {
       mounted = false;
+      abortController.abort();
     };
   }, [sessionReady]);
 
