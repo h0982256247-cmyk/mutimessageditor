@@ -70,7 +70,8 @@ function convertHotspotToArea(hotspot: Hotspot, allMenus: RichMenu[]): LineRichM
       if (targetMenu) {
         area.action.type = 'richmenuswitch';
         area.action.label = hotspot.action.label || targetMenu.name;
-        area.action.richMenuAliasId = `menu_${targetMenu.id}`;
+        // LINE Alias ID max 32 chars. Remove hyphens from UUID (36 chars -> 32 chars)
+        area.action.richMenuAliasId = targetMenu.id.replace(/-/g, '');
         area.action.data = `switch_to_${targetMenu.id}`;
       } else {
         // 如果找不到目標選單,改為 message
@@ -169,7 +170,8 @@ export function buildPublishRequest(menus: RichMenu[]): PublishRequest {
     menus: menus.map(menu => ({
       menuData: buildLineRichMenuPayload(menu, menus),
       imageBase64: menu.imageData,
-      aliasId: `menu_${menu.id}`,
+      // LINE Alias ID max 32 chars. Remove hyphens from UUID.
+      aliasId: menu.id.replace(/-/g, ''),
       isMain: menu.isMain,
     })),
   };
