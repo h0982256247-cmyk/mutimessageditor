@@ -304,11 +304,11 @@ Deno.serve(async (req) => {
                     .eq('user_id', user.id)
                     .eq('alias_id', menu.aliasId);
 
-                // 先嘗試更新現有 Alias
+                // 先嘗試更新現有 Alias (LINE API 使用 POST 更新)
                 const updateAliasResponse = await fetch(
                     `https://api.line.me/v2/bot/richmenu/alias/${menu.aliasId}`,
                     {
-                        method: 'PUT',
+                        method: 'POST',
                         headers: {
                             'Authorization': `Bearer ${accessToken}`,
                             'Content-Type': 'application/json',
