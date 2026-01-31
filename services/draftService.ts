@@ -109,12 +109,12 @@ export const draftService = {
 
                 if (uploadError) throw uploadError;
 
-                // Get Public URL
+                // Get Public URL with cache busting
                 const { data: { publicUrl } } = supabase.storage
                     .from('richmenu-images')
                     .getPublicUrl(path);
 
-                return publicUrl;
+                return `${publicUrl}?t=${Date.now()}`;
             } catch (e) {
                 console.error('Image upload failed, fallback to base64 (might fail DB save):', e);
                 return base64;

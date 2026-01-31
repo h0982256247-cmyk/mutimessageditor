@@ -50,6 +50,8 @@ Deno.serve(async (req) => {
         console.log(`Auth Header received: ${authHeader.substring(0, 20)}...`);
         console.log(`Env Check - URL: ${!!Deno.env.get('SUPABASE_URL')}, Anon Key: ${!!Deno.env.get('SUPABASE_ANON_KEY')}`);
 
+        const token = authHeader.replace('Bearer ', '');
+
         // 建立 Supabase client
         supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
@@ -61,11 +63,11 @@ Deno.serve(async (req) => {
             }
         );
 
-        // 驗證使用者
+        // 驗證使用者 (Explicitly pass token)
         const {
             data: { user },
             error: authError
-        } = await supabaseClient.auth.getUser();
+        } = await supabaseClient.auth.getUser(token);
 
         if (authError) {
             console.error('Auth error:', authError);
