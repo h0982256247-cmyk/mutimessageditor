@@ -338,13 +338,21 @@ Deno.serve(async (req) => {
 
                     if (!createAliasResponse.ok) {
                         const createErr = await createAliasResponse.text();
-                        console.warn(`Create alias failed: ${createAliasResponse.status} - ${createErr}`);
+                        console.error(`Create alias failed: ${createAliasResponse.status} - ${createErr}`);
+                        progress[index].status = 'failed';
+                        progress[index].error = `Alias 創建失敗: ${createErr}`;
+                        await updateJobProgress('set_alias');
+                        throw new Error(`建立別名失敗 (LINE API): ${createErr}`);
                     } else {
                         console.log(`Alias ${menu.aliasId} created successfully.`);
                     }
                 } else {
                     const updateErr = await updateAliasResponse.text();
-                    console.warn(`Update alias warning: ${updateAliasResponse.status} - ${updateErr}`);
+                    console.error(`Update alias failed: ${updateAliasResponse.status} - ${updateErr}`);
+                    progress[index].status = 'failed';
+                    progress[index].error = `Alias 更新失敗: ${updateErr}`;
+                    await updateJobProgress('set_alias');
+                    throw new Error(`更新別名失敗 (LINE API): ${updateErr}`);
                 }
 
                 // ========== Step 6: 儲存版本歷史 ==========
