@@ -162,7 +162,55 @@ Deno.serve(async (req) => {
                 .eq('id', jobId);
         };
 
-        // ========== Step 2: 建立所有選單 (不再刪除舊選單) ==========
+        // ========== Step 1.5: 清理舊選單 (Full Wipe 若 cleanOldMenus 為 true) ==========
+        if (cleanOldMenus) {
+            console.log('Cleaning up ALL old menus and aliases...');
+            await updateJobProgress('clean_old_menus');
+
+            try {
+                // 1. 解除全域預設選單 (Unlink Default Rich Menu)
+                // 這樣才能刪除被設為 Default 的選單
+                await fetch('https://api.line.me/v2/bot/user/all/richmenu', {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                // 2. 取得現有所有 Alias 並刪除
+                const aliasListRes = await fetch('https://api.line.me/v2/bot/richmenu/alias/list', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (aliasListRes.ok) {
+                    const { aliases } = await aliasListRes.json();
+                    for (const alias of aliases) {
+                        await fetch(`https://api.line.me/v2/bot/richmenu/alias/${alias.richMenuAliasId}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                    }
+                }
+
+                // 3. 取得所有 Rich Menu 並刪除
+                const menuListRes = await fetch('https://api.line.me/v2/bot/richmenu/list', {
+                    headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+
+                if (menuListRes.ok) {
+                    const { richmenus } = await menuListRes.json();
+                    for (const menu of richmenus) {
+                        console.log(`Deleting rich menu: ${menu.richMenuId}`);
+                        await fetch(`https://api.line.me/v2/bot/richmenu/${menu.richMenuId}`, {
+                            method: 'DELETE',
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                    }
+                }
+            } catch (e) {
+                console.warn('Error during cleanup (non-fatal):', e);
+            }
+        }
+
+        // ========== Step 2: 建立所有選單 ==========
         for (const [index, menu] of menus.entries()) {
             console.log(`Creating menu ${index + 1}/${menus.length}: ${menu.aliasId}`);
             progress[index].step = 'create_menu';

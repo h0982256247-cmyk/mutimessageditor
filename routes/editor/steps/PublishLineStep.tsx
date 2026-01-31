@@ -43,6 +43,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       // 如果直接分批傳 [menu] 進去，buildPublishRequest 會找不到目標選單而導致連結失效
       const fullPublishRequest = buildPublishRequest(menus);
 
+      // 收集所有發布結果
+      const allResults: { aliasId: string; richMenuId: string }[] = [];
+
       // 2. 改為逐一發送選單，避免 Payload 過大導致 413 或 Timeout
       // 第一個選單同時負責觸發清理舊選單 (cleanOldMenus: true)
       for (const [index, menuItem] of fullPublishRequest.menus.entries()) {
@@ -67,12 +70,23 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         if (!response.data?.success) {
           throw new Error(`選單 ${originalMenu.name} 發布失敗: ${response.data?.error}`);
         }
+
+        // 收集結果
+        if (response.data.results) {
+          allResults.push(...response.data.results);
+        }
       }
 
       // 發布成功
       if (mainMenu) {
         onStatusChange(mainMenu.id, 'published');
       }
+
+      // 更新前端狀態與資料庫
+      if (onPublishComplete) {
+        onPublishComplete(allResults);
+      }
+
       setStatus('success');
     } catch (error: any) {
       console.error(error);
