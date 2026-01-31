@@ -41,13 +41,22 @@ Deno.serve(async (req) => {
     let supabaseClient: any = null;
 
     try {
+        const authHeader = req.headers.get('Authorization');
+        if (!authHeader) {
+            console.error('Missing Authorization header');
+            throw new Error('Missing Authorization header');
+        }
+
+        console.log(`Auth Header received: ${authHeader.substring(0, 20)}...`);
+        console.log(`Env Check - URL: ${!!Deno.env.get('SUPABASE_URL')}, Anon Key: ${!!Deno.env.get('SUPABASE_ANON_KEY')}`);
+
         // 建立 Supabase client
         supabaseClient = createClient(
             Deno.env.get('SUPABASE_URL') ?? '',
             Deno.env.get('SUPABASE_ANON_KEY') ?? '',
             {
                 global: {
-                    headers: { Authorization: req.headers.get('Authorization')! },
+                    headers: { Authorization: authHeader },
                 },
             }
         );
@@ -55,7 +64,13 @@ Deno.serve(async (req) => {
         // 驗證使用者
         const {
             data: { user },
+            error: authError
         } = await supabaseClient.auth.getUser();
+
+        if (authError) {
+            console.error('Auth error:', authError);
+            throw new Error(`Authentication failed: ${authError.message}`);
+        }
 
         if (!user) {
             throw new Error('未授權使用者');
