@@ -7,10 +7,12 @@ interface PublishLineStepProps {
   menus: RichMenu[];
   onReset: () => void;
   onStatusChange: (id: string, status: ProjectStatus, scheduledAt?: string) => void;
+  onPublishComplete?: (results: { aliasId: string; richMenuId: string }[]) => void;
   onBack?: () => void;
+  onSaveDraft: () => Promise<void>;
 }
 
-export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset, onStatusChange, onBack }) => {
+export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset, onStatusChange, onPublishComplete, onBack, onSaveDraft }) => {
   const [status, setStatus] = useState<'idle' | 'publishing' | 'scheduling' | 'success'>('idle');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
@@ -22,6 +24,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     setStatus('publishing');
 
     try {
+      // Auto-save draft before publishing
+      await onSaveDraft();
+
       const { buildPublishRequest, validateImageFileSize } = await import('../../../utils/lineRichMenuBuilder');
       const { supabase } = await import('../../../supabaseClient');
 
@@ -85,6 +90,9 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     setStatus('publishing');
 
     try {
+      // Auto-save draft before scheduling
+      await onSaveDraft();
+
       // 注意: 排程功能需要額外的後端支援 (例如 cron job)
       // 這裡先直接發布,並記錄排程時間
       const { buildPublishRequest } = await import('../../../utils/lineRichMenuBuilder');

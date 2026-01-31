@@ -345,6 +345,7 @@ function App() {
             onStatusChange={handleUpdateDraftStatus}
             onPublishComplete={handlePublishComplete}
             onBack={handleGoBack}
+            onSaveDraft={handleSaveDraft}
           />
         )}
       </main>
