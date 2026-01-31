@@ -37,7 +37,9 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
       const folderMatch = activeFolderId === 'all' ? true : activeFolderId === 'unfiltered' ? !d.folderId : d.folderId === activeFolderId;
       const statusMatch = statusFilter === 'all' ? true : d.status === statusFilter;
       return folderMatch && statusMatch;
-    });
+    })
+    // 「發布中」狀態永遠排在最前面
+    .sort((a, b) => (b.status === 'active' ? 1 : 0) - (a.status === 'active' ? 1 : 0));
 
   const handleDragStart = (e: React.DragEvent, id: string) => {
     e.dataTransfer.setData('draftId', id);
@@ -52,6 +54,7 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
+      case 'active': return <span className="px-2 py-0.5 rounded-full bg-green-500 text-white text-[10px] font-bold animate-pulse shadow-sm">發布中</span>;
       case 'published': return <span className="px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-bold">已發布</span>;
       case 'scheduled': return <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">已預約</span>;
       default: return <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-bold">草稿</span>;

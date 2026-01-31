@@ -15,7 +15,7 @@ export interface Hotspot {
   action: Action;
 }
 
-export type ProjectStatus = 'draft' | 'scheduled' | 'published';
+export type ProjectStatus = 'draft' | 'scheduled' | 'published' | 'active';
 
 export interface RichMenu {
   id: string;

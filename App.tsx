@@ -164,9 +164,13 @@ function App() {
     setDrafts(prev => prev.map(d => {
       const isMatch = d.id === id || d.menus.some(m => m.id === id);
       if (isMatch) {
-        // If accessing via draft list, we might not have 'menus' loaded in state if we didn't select it.
-        // But here we are likely just updating status.
-        return { ...d, status, scheduledAt };
+        // 設為 active 而非 published（表示目前正在使用中）
+        const newStatus = status === 'published' ? 'active' : status;
+        return { ...d, status: newStatus, scheduledAt };
+      }
+      // 發布新選單時，將舊的 active 改為 published
+      if (status === 'published' && d.status === 'active') {
+        return { ...d, status: 'published' };
       }
       return d;
     }));
