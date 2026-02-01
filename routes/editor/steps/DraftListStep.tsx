@@ -206,7 +206,8 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
                 <tr className="bg-gray-50 border-b border-border">
                   <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest w-1/3">專案名稱</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest">目前狀態</th>
-                  <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest">排程/發布時間</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest">排程時間</th>
+                  <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest">發布時間</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest">資料夾</th>
                   <th className="px-6 py-4 text-[11px] font-bold text-secondary uppercase tracking-widest text-right">動作</th>
                 </tr>
@@ -225,7 +226,12 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
                         </div>
                       </td>
                       <td className="px-6 py-5">{getStatusBadge(draft.status)}</td>
-                      <td className="px-6 py-5 text-sm text-secondary">{draft.scheduledAt || (draft.status === 'published' ? '已發布' : '未設定')}</td>
+                      <td className="px-6 py-5 text-sm text-secondary">{draft.scheduledAt || '未設定'}</td>
+                      <td className="px-6 py-5 text-sm text-secondary">
+                        {(draft.status === 'published' || draft.status === 'active')
+                          ? new Date(draft.updatedAt).toLocaleString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false })
+                          : '尚未發布'}
+                      </td>
                       <td className="px-6 py-5 text-sm text-secondary">
                         <div className="flex items-center gap-2">
                           <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" /></svg>
