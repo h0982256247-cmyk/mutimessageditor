@@ -54,10 +54,10 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
 
   const getStatusBadge = (status?: string) => {
     switch (status) {
-      case 'active': return <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold animate-pulse shadow-sm">目前發布中</span>;
-      case 'published': return <span className="px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-bold">已發布</span>;
-      case 'scheduled': return <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold">已預約</span>;
-      default: return <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-bold">草稿</span>;
+      case 'active': return <span className="px-2 py-0.5 rounded-full bg-blue-500 text-white text-[10px] font-bold animate-pulse shadow-sm whitespace-nowrap">目前發布中</span>;
+      case 'published': return <span className="px-2 py-0.5 rounded-full bg-success/10 text-success text-[10px] font-bold whitespace-nowrap">已發布</span>;
+      case 'scheduled': return <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-bold whitespace-nowrap">已預約</span>;
+      default: return <span className="px-2 py-0.5 rounded-full bg-gray-100 text-secondary text-[10px] font-bold whitespace-nowrap">草稿</span>;
     }
   };
 
@@ -193,6 +193,11 @@ export const DraftListStep: React.FC<DraftListStepProps> = ({
                     <h3 className="font-bold text-text group-hover:text-primary transition-colors truncate">{draft.name}</h3>
                     <div className="flex justify-between items-center mt-3">
                       <span className="text-[10px] text-secondary bg-gray-100 px-2 py-0.5 rounded uppercase font-bold tracking-tight">{totalMenus} 個選單</span>
+                      {(draft.status === 'published' || draft.status === 'active') && (
+                        <span className="text-[10px] text-secondary font-medium">
+                          {new Date(draft.updatedAt).toLocaleDateString('zh-TW', { year: 'numeric', month: '2-digit', day: '2-digit' })}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </Card>
