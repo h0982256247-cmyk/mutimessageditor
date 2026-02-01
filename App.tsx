@@ -61,18 +61,48 @@ function App() {
     }
   }, [showSaveSuccess]);
 
-  const handleAddFolder = () => {
-    const newFolder = { id: crypto.randomUUID(), name: '新資料夾' };
-    setFolders([...folders, newFolder]);
+  const handleAddFolder = async () => {
+    try {
+      const { draftService } = await import('./services/draftService');
+      const newFolder = await draftService.createFolder('新資料夾');
+      setFolders([...folders, newFolder]);
+    } catch (e) {
+      console.error('Failed to create folder:', e);
+      alert('無法建立資料夾，請稍後再試');
+    }
   };
 
-  const handleRenameFolder = (id: string, newName: string) => {
+  const handleRenameFolder = async (id: string, newName: string) => {
+    const originalFolders = [...folders];
     setFolders(folders.map(f => f.id === id ? { ...f, name: newName } : f));
+
+    try {
+      const { draftService } = await import('./services/draftService');
+      await draftService.updateFolder(id, newName);
+    } catch (e) {
+      console.error('Failed to rename folder:', e);
+      setFolders(originalFolders);
+    }
   };
 
-  const handleDeleteFolder = (id: string) => {
+  const handleDeleteFolder = async (id: string) => {
+    if (!confirm('確定要刪除此資料夾嗎？')) return;
+
+    const originalFolders = [...folders];
+    const originalDrafts = [...drafts];
+
     setFolders(folders.filter(f => f.id !== id));
     setDrafts(drafts.map(d => d.folderId === id ? { ...d, folderId: null } : d));
+
+    try {
+      const { draftService } = await import('./services/draftService');
+      await draftService.deleteFolder(id);
+    } catch (e) {
+      console.error('Failed to delete folder:', e);
+      setFolders(originalFolders);
+      setDrafts(originalDrafts);
+      alert('刪除資料夾失敗');
+    }
   };
 
   const handleMoveToFolder = (draftId: string, folderId: string | null) => {
