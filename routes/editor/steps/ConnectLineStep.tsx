@@ -172,7 +172,7 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
           <h1 className="text-2xl font-bold text-text tracking-tight">{title}</h1>
           <p className="text-secondary text-sm mt-2">
             {!sessionReady
-              ? '使用 Email 登入'
+              ? ''
               : hasChannel
                 ? '你已完成綁定，可直接進入專案列表'
                 : '登入後請輸入 Channel access token（會加密存於 Supabase）'}
@@ -181,15 +181,7 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
 
         {!sessionReady ? (
           <>
-            <div className="bg-gray-50 border border-border rounded-2xl p-1 mb-5 flex">
-              <button
-                type="button"
-                onClick={() => setMode('sign_in')}
-                className="flex-1 py-2.5 text-sm font-bold rounded-xl transition-all bg-white shadow-sm text-primary"
-              >
-                登入
-              </button>
-            </div>
+
 
             <form onSubmit={handleEmailAuth} className="space-y-4">
               <div className="space-y-1.5">
