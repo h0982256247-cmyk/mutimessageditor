@@ -172,7 +172,7 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
           <h1 className="text-2xl font-bold text-text tracking-tight">{title}</h1>
           <p className="text-secondary text-sm mt-2">
             {!sessionReady
-              ? '使用 Email 登入（Supabase Auth）'
+              ? '使用 Email 登入'
               : hasChannel
                 ? '你已完成綁定，可直接進入專案列表'
                 : '登入後請輸入 Channel access token（會加密存於 Supabase）'}
@@ -272,9 +272,7 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
                   onChange={(e) => setAccessToken(e.target.value)}
                   className="w-full px-4 py-3 bg-gray-50 border border-border rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all text-[15px]"
                 />
-                <p className="text-[11px] text-secondary ml-1 leading-relaxed">
-                  會透過 RPC <span className="font-mono">rm_channel_upsert</span> 寫入 Supabase，並在 DB 端加密保存。
-                </p>
+
               </div>
 
               <div className="pt-4">
