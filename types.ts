@@ -1,9 +1,10 @@
-export type ActionType = 'switch' | 'message' | 'uri' | 'none';
+export type ActionType = 'switch' | 'message' | 'uri' | 'postback' | 'none';
 
 export interface Action {
   type: ActionType;
   label?: string;
   data: string;
+  fillInText?: string; // 預填文字 (僅用於 postback 類型)
 }
 
 export interface Hotspot {

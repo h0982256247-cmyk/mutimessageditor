@@ -139,11 +139,15 @@ export const LineInspector: React.FC<LineInspectorProps> = ({
       const target = allMenus.find(m => m.id !== selectedMenu?.id);
       if (target) defaultData = target.id;
     }
-    onUpdate({ action: { ...hotspot.action, type, data: defaultData } });
+    onUpdate({ action: { ...hotspot.action, type, data: defaultData, fillInText: undefined } });
   };
 
   const handleDataChange = (val: string) => {
     onUpdate({ action: { ...hotspot.action, data: val } });
+  };
+
+  const handleFillInTextChange = (val: string) => {
+    onUpdate({ action: { ...hotspot.action, fillInText: val } });
   };
 
   return (
@@ -177,6 +181,7 @@ export const LineInspector: React.FC<LineInspectorProps> = ({
               <option value="switch">切換選單</option>
               <option value="message">傳送訊息</option>
               <option value="uri">開啟連結</option>
+              <option value="postback">預填欄位</option>
             </select>
             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-secondary">
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -228,6 +233,29 @@ export const LineInspector: React.FC<LineInspectorProps> = ({
                 placeholder="https://example.com"
                 className="w-full p-3 bg-gray-50 border border-border rounded-[10px] text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
               />
+            </>
+          )}
+
+          {hotspot.action.type === 'postback' && (
+            <>
+              <label className="text-sm font-medium text-text">顯示文字</label>
+              <input
+                type="text"
+                value={hotspot.action.data}
+                onChange={(e) => handleDataChange(e.target.value)}
+                placeholder="例如：柔兒餐廳訂位"
+                className="w-full p-3 bg-gray-50 border border-border rounded-[10px] text-text focus:outline-none focus:ring-2 focus:ring-primary/20"
+              />
+              <p className="text-[10px] text-gray-400 -mt-1">用戶點擊後，此文字會顯示在對話中</p>
+
+              <label className="text-sm font-medium text-text mt-3">預填內容</label>
+              <textarea
+                value={hotspot.action.fillInText || ''}
+                onChange={(e) => handleFillInTextChange(e.target.value)}
+                placeholder={"📌柔兒餐廳訂位\n＿＿＿＿＿\n姓名：\n日期：\n時間：\n人數：\n手機：\n備註："}
+                className="w-full p-3 bg-gray-50 border border-border rounded-[10px] text-text focus:outline-none focus:ring-2 focus:ring-primary/20 min-h-[150px] resize-none font-mono text-sm"
+              />
+              <p className="text-[10px] text-gray-400 -mt-1">用戶點擊後，鍵盤會自動開啟並填入此內容</p>
             </>
           )}
 

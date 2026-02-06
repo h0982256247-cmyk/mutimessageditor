@@ -137,6 +137,26 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     }
   };
 
+  if (status === 'success') {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 animate-in fade-in duration-300">
+        <Card className="w-full max-w-sm p-8 shadow-2xl text-center animate-in zoom-in duration-300">
+          <div className="w-20 h-20 bg-success/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-success">
+              <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+              <polyline points="22 4 12 14.01 9 11.01" />
+            </svg>
+          </div>
+          <h2 className="text-2xl font-bold text-text mb-2">發布成功！</h2>
+          <p className="text-secondary text-sm mb-8">您的圖文選單已成功發布至 LINE 官方帳號</p>
+          <Button onClick={onReset} fullWidth className="py-4 shadow-lg shadow-primary/20">
+            確認
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
   if (status === 'scheduling') {
     return (
       <div className="flex items-center justify-center h-full p-6 animate-in zoom-in duration-300">
