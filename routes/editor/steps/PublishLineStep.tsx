@@ -126,6 +126,20 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       // 如果直接分批傳 [menu] 進去，buildPublishRequest 會找不到目標選單而導致連結失效
       const fullPublishRequest = buildPublishRequest(menus);
 
+      // DEBUG: Inspect the payload for postback actions
+      console.group('Publish Request Payload Debug');
+      fullPublishRequest.menus.forEach((m, i) => {
+        console.log(`Menu ${i}: ${m.menuData.name}`);
+        m.menuData.areas.forEach((area: any, j: number) => {
+          console.log(`  Area ${j} Action:`, area.action);
+          if (area.action.type === 'postback') {
+            console.log(`    > inputOption: ${area.action.inputOption}`);
+            console.log(`    > fillInText: ${JSON.stringify(area.action.fillInText)}`);
+          }
+        });
+      });
+      console.groupEnd();
+
       // 收集所有發布結果
       const allResults: { aliasId: string; richMenuId: string }[] = [];
 

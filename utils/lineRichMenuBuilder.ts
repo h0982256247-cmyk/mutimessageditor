@@ -92,12 +92,14 @@ function convertHotspotToArea(hotspot: Hotspot, allMenus: RichMenu[]): LineRichM
       break;
 
     case 'postback':
-      area.action.type = 'postback';
-      area.action.label = hotspot.action.label || hotspot.action.data || '預填表單';
-      area.action.data = `action=${hotspot.action.data}&hotspot=${hotspot.id}`;
-      area.action.displayText = hotspot.action.data || '';
-      area.action.inputOption = 'openKeyboard';
-      area.action.fillInText = hotspot.action.fillInText || '';
+      area.action = {
+        type: 'postback',
+        label: hotspot.action.label || hotspot.action.data || '預填表單',
+        data: `action=${hotspot.action.data}&hotspot=${hotspot.id}`,
+        displayText: hotspot.action.data || '',
+        inputOption: 'openKeyboard',
+        fillInText: hotspot.action.fillInText || ''
+      };
       break;
 
     case 'none':
