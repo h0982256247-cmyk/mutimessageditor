@@ -11,9 +11,9 @@ interface LineHotspotBoxProps {
   onResizeStart: (e: React.MouseEvent, id: string, handle: string) => void;
 }
 
-export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({ 
-  hotspot, 
-  isSelected, 
+export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({
+  hotspot,
+  isSelected,
   index,
   onDragStart,
   onResizeStart
@@ -26,7 +26,9 @@ export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({
     position: 'absolute',
   };
 
-  const label = hotspot.action.type === 'switch' ? '切換' : hotspot.action.type === 'uri' ? '連結' : '訊息';
+  const label = hotspot.action.type === 'switch' ? '切換' :
+    hotspot.action.type === 'uri' ? '連結' :
+      hotspot.action.type === 'postback' ? '預填' : '訊息';
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -40,7 +42,7 @@ export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({
 
   // Helper for larger hit area handles
   const ResizeHandle = ({ type, className }: { type: string, className: string }) => (
-    <div 
+    <div
       className={`absolute w-8 h-8 flex items-center justify-center z-30 group/handle cursor-${type}-resize ${className}`}
       onMouseDown={(e) => handleResizeDown(e, type)}
     >
@@ -54,8 +56,8 @@ export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({
       onMouseDown={handleMouseDown}
       className={`
         group absolute flex items-center justify-center
-        ${isSelected 
-          ? 'border-[3px] border-primary bg-primary/25 z-20 cursor-move shadow-[0_0_20px_rgba(0,122,255,0.4)]' 
+        ${isSelected
+          ? 'border-[3px] border-primary bg-primary/25 z-20 cursor-move shadow-[0_0_20px_rgba(0,122,255,0.4)]'
           : 'border border-white/40 bg-black/10 hover:bg-primary/10 hover:border-primary/50 z-10 cursor-pointer'
         }
       `}
@@ -67,7 +69,7 @@ export const LineHotspotBox: React.FC<LineHotspotBoxProps> = ({
         <span className="bg-gray-100 px-1 rounded text-[8px] font-mono">#{index + 1}</span>
         <span className="truncate max-w-[80px]">{label}</span>
       </div>
-      
+
       {isSelected && (
         <>
           <ResizeHandle type="nw" className="top-0 left-0 -translate-x-1/2 -translate-y-1/2" />

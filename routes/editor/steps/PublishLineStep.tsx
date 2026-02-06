@@ -69,12 +69,21 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
           });
         }
 
-        if (hotspot.action.type === 'postback' && (!hotspot.action.data || hotspot.action.data.trim() === '')) {
-          errors.push({
-            menuName: menu.name || '未命名選單',
-            field: `熱區 ${hotspotIndex}`,
-            message: '預填欄位動作缺少顯示文字'
-          });
+        if (hotspot.action.type === 'postback') {
+          if (!hotspot.action.data || hotspot.action.data.trim() === '') {
+            errors.push({
+              menuName: menu.name || '未命名選單',
+              field: `熱區 ${hotspotIndex}`,
+              message: '預填欄位動作缺少顯示文字'
+            });
+          }
+          if (!hotspot.action.fillInText || hotspot.action.fillInText.trim() === '') {
+            errors.push({
+              menuName: menu.name || '未命名選單',
+              field: `熱區 ${hotspotIndex}`,
+              message: '預填欄位動作缺少預填內容'
+            });
+          }
         }
 
         if (hotspot.action.type === 'switch' && !hotspot.action.data) {
