@@ -1,7 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { RichMenu, ProjectStatus } from '../../../types';
+
+interface ValidationError {
+  menuName: string;
+  field: string;
+  message: string;
+}
 
 interface PublishLineStepProps {
   menus: RichMenu[];
@@ -20,7 +26,75 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
   const mainMenu = menus.find(m => m.isMain);
   const totalHotspots = menus.reduce((acc, m) => acc + m.hotspots.length, 0);
 
+  // Validation logic
+  const validationErrors = useMemo<ValidationError[]>(() => {
+    const errors: ValidationError[] = [];
+
+    for (const menu of menus) {
+      // Check for missing image
+      if (!menu.imageData) {
+        errors.push({
+          menuName: menu.name || '未命名選單',
+          field: '背景圖片',
+          message: '尚未上傳背景圖片'
+        });
+      }
+
+      // Check for missing barText
+      if (!menu.barText || menu.barText.trim() === '') {
+        errors.push({
+          menuName: menu.name || '未命名選單',
+          field: '選單列文字',
+          message: '尚未設定選單列顯示文字'
+        });
+      }
+
+      // Check hotspot actions
+      for (const hotspot of menu.hotspots) {
+        const hotspotIndex = menu.hotspots.indexOf(hotspot) + 1;
+
+        if (hotspot.action.type === 'uri' && (!hotspot.action.data || hotspot.action.data.trim() === '')) {
+          errors.push({
+            menuName: menu.name || '未命名選單',
+            field: `熱區 ${hotspotIndex}`,
+            message: '開啟連結動作缺少網址'
+          });
+        }
+
+        if (hotspot.action.type === 'message' && (!hotspot.action.data || hotspot.action.data.trim() === '')) {
+          errors.push({
+            menuName: menu.name || '未命名選單',
+            field: `熱區 ${hotspotIndex}`,
+            message: '傳送訊息動作缺少訊息內容'
+          });
+        }
+
+        if (hotspot.action.type === 'postback' && (!hotspot.action.data || hotspot.action.data.trim() === '')) {
+          errors.push({
+            menuName: menu.name || '未命名選單',
+            field: `熱區 ${hotspotIndex}`,
+            message: '預填欄位動作缺少顯示文字'
+          });
+        }
+
+        if (hotspot.action.type === 'switch' && !hotspot.action.data) {
+          errors.push({
+            menuName: menu.name || '未命名選單',
+            field: `熱區 ${hotspotIndex}`,
+            message: '切換選單動作尚未選擇目標選單'
+          });
+        }
+      }
+    }
+
+    return errors;
+  }, [menus]);
+
+  const hasErrors = validationErrors.length > 0;
+
   const handlePublishNow = async () => {
+    if (hasErrors) return;
+
     setStatus('publishing');
 
     try {
@@ -99,6 +173,8 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       alert('請選取完整的排程日期與時間');
       return;
     }
+
+    if (hasErrors) return;
 
     setStatus('publishing');
 
@@ -182,9 +258,21 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
             </div>
           </div>
 
+          {hasErrors && (
+            <div className="mt-6 p-4 bg-error/5 border border-error/20 rounded-xl">
+              <p className="text-error text-xs font-bold mb-2">⚠️ 請先修正以下問題：</p>
+              <ul className="text-error/80 text-xs space-y-1">
+                {validationErrors.slice(0, 3).map((err, i) => (
+                  <li key={i}>• {err.menuName}：{err.message}</li>
+                ))}
+                {validationErrors.length > 3 && <li>...還有 {validationErrors.length - 3} 個問題</li>}
+              </ul>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 gap-3 mt-8">
             <Button onClick={() => setStatus('idle')} variant="secondary">取消設定</Button>
-            <Button onClick={handleScheduleConfirm}>確認排程</Button>
+            <Button onClick={handleScheduleConfirm} disabled={hasErrors}>確認排程</Button>
           </div>
         </Card>
       </div>
@@ -217,8 +305,41 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         </div>
 
         <div className="p-8 space-y-6">
+          {/* Validation Warnings */}
+          {hasErrors && (
+            <div className="p-4 bg-error/5 border border-error/20 rounded-xl animate-in fade-in duration-300">
+              <div className="flex items-center gap-2 mb-3">
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-error">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="12" y1="8" x2="12" y2="12" />
+                  <line x1="12" y1="16" x2="12.01" y2="16" />
+                </svg>
+                <p className="text-error text-sm font-bold">無法發布，請先修正以下問題：</p>
+              </div>
+              <ul className="space-y-2 max-h-40 overflow-y-auto">
+                {validationErrors.map((err, i) => (
+                  <li key={i} className="flex items-start gap-2 text-xs text-error/80 bg-white/50 p-2 rounded-lg">
+                    <span className="text-error/60">•</span>
+                    <div>
+                      <span className="font-semibold">{err.menuName}</span>
+                      <span className="mx-1">›</span>
+                      <span>{err.field}：{err.message}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div className="flex flex-col gap-3 pt-4">
-            <Button onClick={handlePublishNow} disabled={status === 'publishing'} fullWidth className={`py-4 shadow-lg shadow-primary/20 ${status === 'publishing' ? 'animate-pulse' : ''}`}>{status === 'publishing' ? '正提交至 LINE...' : '現在立即發布'}</Button>
+            <Button
+              onClick={handlePublishNow}
+              disabled={status === 'publishing' || hasErrors}
+              fullWidth
+              className={`py-4 shadow-lg shadow-primary/20 ${status === 'publishing' ? 'animate-pulse' : ''} ${hasErrors ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
+              {status === 'publishing' ? '正提交至 LINE...' : '現在立即發布'}
+            </Button>
             <Button onClick={() => setStatus('scheduling')} variant="ghost" className="text-primary font-bold">我要預約排程發布</Button>
           </div>
         </div>
