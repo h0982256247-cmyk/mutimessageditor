@@ -17,6 +17,9 @@ interface LineRichMenuArea {
     uri?: string;
     data?: string;
     richMenuAliasId?: string;
+    displayText?: string;
+    inputOption?: 'closeRichMenu' | 'openRichMenu' | 'openKeyboard' | 'openVoice';
+    fillInText?: string;
   };
 }
 
@@ -86,6 +89,15 @@ function convertHotspotToArea(hotspot: Hotspot, allMenus: RichMenu[]): LineRichM
         area.action.label = '錯誤';
         area.action.text = '目標選單不存在';
       }
+      break;
+
+    case 'postback':
+      area.action.type = 'postback';
+      area.action.label = hotspot.action.label || hotspot.action.data || '預填表單';
+      area.action.data = `action=${hotspot.action.data}&hotspot=${hotspot.id}`;
+      area.action.displayText = hotspot.action.data || '';
+      area.action.inputOption = 'openKeyboard';
+      area.action.fillInText = hotspot.action.fillInText || '';
       break;
 
     case 'none':

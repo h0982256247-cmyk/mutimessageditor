@@ -266,9 +266,7 @@ function App() {
     } catch (e) {
       console.error('Failed to save published IDs or update statuses:', e);
     }
-
-    // 5. Navigate back to draft list
-    setStep(AppStep.DRAFT_LIST);
+    // Navigation is now handled by the success modal's confirm button (onReset)
   };
 
   const handlePublishReset = () => {
