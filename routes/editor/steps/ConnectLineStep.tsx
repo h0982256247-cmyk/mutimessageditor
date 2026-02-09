@@ -232,14 +232,7 @@ export const ConnectLineStep: React.FC<{ onComplete: () => void }> = ({ onComple
               進入專案列表
             </Button>
 
-            <div className="mt-4">
-              <button
-                onClick={() => setHasChannel(false)}
-                className="w-full text-center text-xs font-bold text-secondary hover:text-primary hover:underline"
-              >
-                重新填寫 / 更新 Channel access token
-              </button>
-            </div>
+
           </>
         ) : (
           <>

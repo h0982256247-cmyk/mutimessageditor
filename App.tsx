@@ -312,7 +312,7 @@ function App() {
         )}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-sm">L</div>
-          <span className="font-bold text-text tracking-tight text-lg uppercase">Line <span className="text-primary">Studio</span></span>
+          <span className="font-bold text-text tracking-tight text-lg uppercase">GD <span className="text-primary">MENU</span></span>
         </div>
       </div>
 
