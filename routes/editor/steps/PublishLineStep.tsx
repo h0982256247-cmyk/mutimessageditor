@@ -1,8 +1,9 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { RichMenu, ProjectStatus } from '../../../types';
 import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../../../constants';
+import { getImageDimensions, validateImageDimensions, validateImageFileSize } from '../../../utils/lineRichMenuBuilder';
 
 interface ValidationError {
   menuName: string;
@@ -19,13 +20,66 @@ interface PublishLineStepProps {
   onSaveDraft: () => Promise<void>;
 }
 
+interface ImageCheckResult {
+  menuId: string;
+  menuName: string;
+  status: 'checking' | 'pass' | 'fail' | 'no-image';
+  width?: number;
+  height?: number;
+  fileSizeOk?: boolean;
+  dimError?: string;
+}
+
 export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset, onStatusChange, onPublishComplete, onBack, onSaveDraft }) => {
   const [status, setStatus] = useState<'idle' | 'publishing' | 'scheduling' | 'success'>('idle');
   const [scheduledDate, setScheduledDate] = useState('');
   const [scheduledTime, setScheduledTime] = useState('');
+  const [imageChecks, setImageChecks] = useState<ImageCheckResult[]>([]);
 
   const mainMenu = menus.find(m => m.isMain);
   const totalHotspots = menus.reduce((acc, m) => acc + m.hotspots.length, 0);
+
+  // 圖片防呆檢查
+  useEffect(() => {
+    const runChecks = async () => {
+      const results: ImageCheckResult[] = [];
+      for (const menu of menus) {
+        if (!menu.imageData) {
+          results.push({ menuId: menu.id, menuName: menu.name || '未命名選單', status: 'no-image' });
+          continue;
+        }
+        const result: ImageCheckResult = {
+          menuId: menu.id,
+          menuName: menu.name || '未命名選單',
+          status: 'checking',
+          fileSizeOk: validateImageFileSize(menu.imageData),
+        };
+        try {
+          const { width, height } = await getImageDimensions(menu.imageData);
+          result.width = width;
+          result.height = height;
+          const validation = validateImageDimensions(width, height);
+          if (!validation.valid) {
+            result.status = 'fail';
+            result.dimError = validation.error;
+          } else if (!result.fileSizeOk) {
+            result.status = 'fail';
+            result.dimError = '檔案超過 1MB';
+          } else {
+            result.status = 'pass';
+          }
+        } catch {
+          result.status = 'fail';
+          result.dimError = '無法讀取圖片';
+        }
+        results.push(result);
+      }
+      setImageChecks(results);
+    };
+    runChecks();
+  }, [menus]);
+
+  const hasImageErrors = imageChecks.some(c => c.status === 'fail');
 
   // Validation logic
   const validationErrors = useMemo<ValidationError[]>(() => {
@@ -100,7 +154,7 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
     return errors;
   }, [menus]);
 
-  const hasErrors = validationErrors.length > 0;
+  const hasErrors = validationErrors.length > 0 || hasImageErrors;
 
   const handlePublishNow = async () => {
     if (hasErrors) return;
@@ -346,15 +400,44 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         </div>
 
         <div className="p-8 space-y-6">
-          {/* 圖片規格說明 */}
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
-            <p className="font-bold mb-1">📐 LINE Rich Menu 圖片規格</p>
-            <ul className="space-y-0.5 text-blue-600">
-              <li>• 格式：JPG / PNG，檔案 ≤ 1MB</li>
-              <li>• 寬度：800 ~ 2500 px，高度 ≥ 250 px</li>
-              <li>• 長寬比（寬÷高）≥ 1.45</li>
-              <li>• 建議：{CANVAS_WIDTH}×{CANVAS_HEIGHT}、2500×843、1200×810</li>
-            </ul>
+          {/* 圖片防呆檢查 */}
+          <div className={`p-4 rounded-xl border text-xs ${hasImageErrors ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
+            <div className="flex items-center justify-between mb-3">
+              <p className="font-bold text-sm text-gray-800">🖼️ 圖片防呆檢查</p>
+              <span className="text-[10px] text-gray-400">寬 800~2500px・高 ≥250px・比例 ≥1.45・≤1MB</span>
+            </div>
+            <div className="space-y-2">
+              {imageChecks.map((check) => (
+                <div key={check.menuId} className={`flex items-center gap-3 p-2.5 rounded-lg border ${check.status === 'pass' ? 'bg-white border-green-200' :
+                    check.status === 'fail' ? 'bg-white border-red-200' :
+                      check.status === 'no-image' ? 'bg-white border-yellow-200' :
+                        'bg-white border-gray-200'
+                  }`}>
+                  {/* 狀態圖標 */}
+                  <span className="text-base flex-shrink-0">
+                    {check.status === 'checking' && '⏳'}
+                    {check.status === 'pass' && '✅'}
+                    {check.status === 'fail' && '❌'}
+                    {check.status === 'no-image' && '⚠️'}
+                  </span>
+                  {/* 選單名稱 */}
+                  <span className="font-semibold text-gray-700 min-w-0 truncate">{check.menuName}</span>
+                  {/* 尺寸/狀態 */}
+                  <span className={`ml-auto flex-shrink-0 font-mono ${check.status === 'pass' ? 'text-green-600' :
+                      check.status === 'fail' ? 'text-red-500' :
+                        'text-yellow-600'
+                    }`}>
+                    {check.status === 'checking' && '檢查中...'}
+                    {check.status === 'pass' && `${check.width}×${check.height} ✓`}
+                    {check.status === 'fail' && (check.dimError || '不符合規範')}
+                    {check.status === 'no-image' && '尚未上傳圖片'}
+                  </span>
+                </div>
+              ))}
+              {imageChecks.length === 0 && (
+                <p className="text-gray-400 text-center py-2">載入中...</p>
+              )}
+            </div>
           </div>
 
           {/* Validation Warnings */}
