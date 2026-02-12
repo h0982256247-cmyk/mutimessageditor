@@ -377,96 +377,112 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
   return (
     <div className="flex items-center justify-center h-full p-6">
       <Card className="w-full max-w-md overflow-hidden shadow-2xl relative">
-        {/* 已移除卡片內的返回按鈕，導覽邏輯已整合至全域 Header */}
+        {/* Header */}
+        <div className="p-6 pb-5 border-b border-border bg-gradient-to-b from-gray-50 to-white">
+          <h2 className="text-xl font-bold text-text">準備發布專案</h2>
+          <p className="text-secondary text-xs mt-1">即將提交至 LINE 官方帳號</p>
 
-        <div className="p-8 pt-12 border-b border-border bg-gray-50/50">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h2 className="text-2xl font-bold text-text">準備發布專案</h2>
-              <p className="text-secondary text-sm mt-1">即將提交至 LINE 官方帳號</p>
+          <div className="grid grid-cols-2 gap-3 mt-4">
+            <div className="bg-white p-3 rounded-xl border border-border shadow-sm">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-0.5">層級數量</p>
+              <p className="text-xl font-bold">{menus.length} <span className="text-xs font-normal text-secondary">個選單</span></p>
             </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4 mt-6">
-            <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
-              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">層級數量</p>
-              <p className="text-2xl font-bold">{menus.length} <span className="text-xs font-normal">個選單</span></p>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-border shadow-sm">
-              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-1">總熱點</p>
-              <p className="text-2xl font-bold">{totalHotspots} <span className="text-xs font-normal">個區域</span></p>
+            <div className="bg-white p-3 rounded-xl border border-border shadow-sm">
+              <p className="text-[10px] text-secondary uppercase font-bold tracking-widest mb-0.5">總熱點</p>
+              <p className="text-xl font-bold">{totalHotspots} <span className="text-xs font-normal text-secondary">個區域</span></p>
             </div>
           </div>
         </div>
 
-        <div className="p-8 space-y-6">
+        <div className="p-6 space-y-4">
           {/* 圖片防呆檢查 */}
-          <div className={`p-4 rounded-xl border text-xs ${hasImageErrors ? 'bg-red-50 border-red-200' : 'bg-green-50 border-green-200'}`}>
-            <div className="flex items-center justify-between mb-3">
-              <p className="font-bold text-sm text-gray-800">🖼️ 圖片防呆檢查</p>
-              <span className="text-[10px] text-gray-400">寬 800~2500px・高 ≥250px・比例 ≥1.45・≤1MB</span>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-2.5 bg-gray-50 border-b border-border">
+              <div className="flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="text-gray-500">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" /><circle cx="8.5" cy="8.5" r="1.5" /><polyline points="21 15 16 10 5 21" />
+                </svg>
+                <span className="text-xs font-bold text-gray-700">圖片檢查</span>
+                {!hasImageErrors && imageChecks.length > 0 && imageChecks.every(c => c.status === 'pass') && (
+                  <span className="text-[10px] bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full font-bold">全部通過</span>
+                )}
+                {hasImageErrors && (
+                  <span className="text-[10px] bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full font-bold">有異常</span>
+                )}
+              </div>
+              <span className="text-[10px] text-gray-400 hidden sm:inline">寬 800~2500 · 高 ≥250 · 比例 ≥1.45 · ≤1MB</span>
             </div>
-            <div className="space-y-2">
+            <div className="divide-y divide-gray-100">
               {imageChecks.map((check) => (
-                <div key={check.menuId} className={`flex items-center gap-3 p-2.5 rounded-lg border ${check.status === 'pass' ? 'bg-white border-green-200' :
-                    check.status === 'fail' ? 'bg-white border-red-200' :
-                      check.status === 'no-image' ? 'bg-white border-yellow-200' :
-                        'bg-white border-gray-200'
-                  }`}>
+                <div key={check.menuId} className="flex items-start gap-3 px-4 py-3">
                   {/* 狀態圖標 */}
-                  <span className="text-base flex-shrink-0">
-                    {check.status === 'checking' && '⏳'}
-                    {check.status === 'pass' && '✅'}
-                    {check.status === 'fail' && '❌'}
-                    {check.status === 'no-image' && '⚠️'}
-                  </span>
-                  {/* 選單名稱 */}
-                  <span className="font-semibold text-gray-700 min-w-0 truncate">{check.menuName}</span>
-                  {/* 尺寸/狀態 */}
-                  <span className={`ml-auto flex-shrink-0 font-mono ${check.status === 'pass' ? 'text-green-600' :
-                      check.status === 'fail' ? 'text-red-500' :
-                        'text-yellow-600'
+                  <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 ${check.status === 'pass' ? 'bg-green-100' :
+                      check.status === 'fail' ? 'bg-red-100' :
+                        check.status === 'no-image' ? 'bg-yellow-100' :
+                          'bg-gray-100'
                     }`}>
-                    {check.status === 'checking' && '檢查中...'}
-                    {check.status === 'pass' && `${check.width}×${check.height} ✓`}
-                    {check.status === 'fail' && (check.dimError || '不符合規範')}
-                    {check.status === 'no-image' && '尚未上傳圖片'}
-                  </span>
+                    {check.status === 'checking' && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="text-gray-400 animate-spin"><path d="M21 12a9 9 0 1 1-6.22-8.56" /></svg>
+                    )}
+                    {check.status === 'pass' && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-green-600"><polyline points="20 6 9 17 4 12" /></svg>
+                    )}
+                    {check.status === 'fail' && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-red-500"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+                    )}
+                    {check.status === 'no-image' && (
+                      <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3.5" className="text-yellow-600"><line x1="12" y1="8" x2="12" y2="13" /><circle cx="12" cy="17" r="0.5" /></svg>
+                    )}
+                  </div>
+                  {/* 內容 */}
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-semibold text-gray-800 truncate">{check.menuName}</span>
+                      {check.status === 'pass' && (
+                        <span className="text-[11px] font-mono text-green-600 flex-shrink-0">{check.width}×{check.height}</span>
+                      )}
+                    </div>
+                    {check.status === 'fail' && (
+                      <p className="text-[11px] text-red-500 mt-0.5">{check.dimError || '不符合規範'}</p>
+                    )}
+                    {check.status === 'no-image' && (
+                      <p className="text-[11px] text-yellow-600 mt-0.5">尚未上傳背景圖片</p>
+                    )}
+                    {check.status === 'checking' && (
+                      <p className="text-[11px] text-gray-400 mt-0.5">檢查中...</p>
+                    )}
+                  </div>
                 </div>
               ))}
               {imageChecks.length === 0 && (
-                <p className="text-gray-400 text-center py-2">載入中...</p>
+                <p className="text-gray-400 text-xs text-center py-4">載入中...</p>
               )}
             </div>
           </div>
 
           {/* Validation Warnings */}
-          {hasErrors && (
-            <div className="p-4 bg-error/5 border border-error/20 rounded-xl animate-in fade-in duration-300">
-              <div className="flex items-center gap-2 mb-3">
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-error">
-                  <circle cx="12" cy="12" r="10" />
-                  <line x1="12" y1="8" x2="12" y2="12" />
-                  <line x1="12" y1="16" x2="12.01" y2="16" />
+          {validationErrors.length > 0 && (
+            <div className="rounded-xl border border-red-200 overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 bg-red-50 border-b border-red-200">
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="text-red-500">
+                  <circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" />
                 </svg>
-                <p className="text-error text-sm font-bold">無法發布，請先修正以下問題：</p>
+                <span className="text-xs font-bold text-red-700">尚需修正 {validationErrors.length} 項問題</span>
               </div>
-              <ul className="space-y-2 max-h-40 overflow-y-auto">
+              <div className="divide-y divide-red-100 max-h-36 overflow-y-auto">
                 {validationErrors.map((err, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-error/80 bg-white/50 p-2 rounded-lg">
-                    <span className="text-error/60">•</span>
-                    <div>
-                      <span className="font-semibold">{err.menuName}</span>
-                      <span className="mx-1">›</span>
-                      <span>{err.field}：{err.message}</span>
-                    </div>
-                  </li>
+                  <div key={i} className="px-4 py-2.5 text-xs text-gray-600">
+                    <span className="font-semibold text-gray-800">{err.menuName}</span>
+                    <span className="mx-1 text-gray-300">›</span>
+                    <span>{err.field}：{err.message}</span>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
 
-          <div className="flex flex-col gap-3 pt-4">
+          {/* Action Buttons */}
+          <div className="flex flex-col gap-2.5 pt-2">
             <Button
               onClick={handlePublishNow}
               disabled={status === 'publishing' || hasErrors}
