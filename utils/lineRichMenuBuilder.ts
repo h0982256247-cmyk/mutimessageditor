@@ -160,9 +160,45 @@ export function validateImageSize(width: number, height: number): boolean {
     { width: 2500, height: 843 },  // 比例 6:1
     { width: 1200, height: 810 },  // 比例 3:2 (小尺寸)
     { width: 1200, height: 405 },  // 比例 6:1 (小尺寸)
+    { width: 800, height: 540 },   // 比例 3:2 (最小)
+    { width: 800, height: 270 },   // 比例 6:1 (最小)
   ];
 
   return validSizes.some(size => size.width === width && size.height === height);
+}
+
+/**
+ * 驗證圖片尺寸並回傳詳細錯誤訊息
+ * LINE Rich Menu 圖片規範：
+ * - 寬度：800px ~ 2500px
+ * - 高度：最低 250px
+ * - 長寬比 (寬÷高)：≥ 1.45
+ * - 建議尺寸: 2500×1686, 2500×843, 1200×810, 1200×405, 800×540, 800×270
+ */
+export function validateImageDimensions(width: number, height: number): { valid: boolean; error?: string } {
+  if (width < 800 || width > 2500) {
+    return { valid: false, error: `圖片寬度須為 800~2500px（目前：${width}px）` };
+  }
+  if (height < 250) {
+    return { valid: false, error: `圖片高度須 ≥ 250px（目前：${height}px）` };
+  }
+  const ratio = width / height;
+  if (ratio < 1.45) {
+    return { valid: false, error: `長寬比（寬÷高）須 ≥ 1.45（目前：${ratio.toFixed(2)}）` };
+  }
+  return { valid: true };
+}
+
+/**
+ * 從 base64 / URL 取得圖片的像素尺寸
+ */
+export function getImageDimensions(src: string): Promise<{ width: number; height: number }> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+    img.onerror = () => reject(new Error('無法載入圖片'));
+    img.src = src;
+  });
 }
 
 /**

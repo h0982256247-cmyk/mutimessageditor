@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Card } from '../../../components/common/Card';
 import { Button } from '../../../components/common/Button';
 import { RichMenu, ProjectStatus } from '../../../types';
+import { CANVAS_WIDTH, CANVAS_HEIGHT } from '../../../constants';
 
 interface ValidationError {
   menuName: string;
@@ -110,13 +111,30 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
       // Auto-save draft before publishing
       await onSaveDraft();
 
-      const { buildPublishRequest, validateImageFileSize } = await import('../../../utils/lineRichMenuBuilder');
+      const { buildPublishRequest, validateImageFileSize, getImageDimensions, validateImageDimensions } = await import('../../../utils/lineRichMenuBuilder');
       const { supabase } = await import('../../../supabaseClient');
 
-      // Check image sizes first
+      // Check image dimensions and file sizes first
       for (const menu of menus) {
-        if (menu.imageData && !validateImageFileSize(menu.imageData)) {
-          throw new Error(`選單「${menu.name}」的圖片檔案過大 (超過 1MB)，請壓縮後再試一次。`);
+        if (menu.imageData) {
+          // 驗證檔案大小
+          if (!validateImageFileSize(menu.imageData)) {
+            throw new Error(`選單「${menu.name}」的圖片檔案過大（超過 1MB），請壓縮後再試一次。`);
+          }
+          // 驗證像素尺寸
+          try {
+            const { width, height } = await getImageDimensions(menu.imageData);
+            const validation = validateImageDimensions(width, height);
+            if (!validation.valid) {
+              throw new Error(
+                `選單「${menu.name}」的圖片尺寸不符合 LINE 規範：${validation.error}\n` +
+                `建議尺寸：2500×1686、2500×843、1200×810、1200×405、800×540、800×270`
+              );
+            }
+          } catch (dimErr: any) {
+            if (dimErr.message.includes('LINE 規範')) throw dimErr;
+            throw new Error(`選單「${menu.name}」的圖片無法讀取尺寸，請確認檔案是否正確。`);
+          }
         }
       }
 
@@ -328,6 +346,17 @@ export const PublishLineStep: React.FC<PublishLineStepProps> = ({ menus, onReset
         </div>
 
         <div className="p-8 space-y-6">
+          {/* 圖片規格說明 */}
+          <div className="p-4 bg-blue-50 border border-blue-200 rounded-xl text-xs text-blue-700">
+            <p className="font-bold mb-1">📐 LINE Rich Menu 圖片規格</p>
+            <ul className="space-y-0.5 text-blue-600">
+              <li>• 格式：JPG / PNG，檔案 ≤ 1MB</li>
+              <li>• 寬度：800 ~ 2500 px，高度 ≥ 250 px</li>
+              <li>• 長寬比（寬÷高）≥ 1.45</li>
+              <li>• 建議：{CANVAS_WIDTH}×{CANVAS_HEIGHT}、2500×843、1200×810</li>
+            </ul>
+          </div>
+
           {/* Validation Warnings */}
           {hasErrors && (
             <div className="p-4 bg-error/5 border border-error/20 rounded-xl animate-in fade-in duration-300">
